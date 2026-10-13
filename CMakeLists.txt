@@ -30,7 +30,7 @@ target_link_libraries(BlockLauncher PRIVATE Qt6::Widgets Qt6::Network Qt6::Xml)
 # Garde cette valeur synchronisée avec MyAppVersion dans installer/BlockLauncher.iss :
 # c'est elle que compare le système de mise à jour auto (src/Update.cpp) face aux GitHub
 # Releases du dépôt.
-target_compile_definitions(BlockLauncher PRIVATE BLOCKLAUNCHER_VERSION="1.0.0")
+target_compile_definitions(BlockLauncher PRIVATE BLOCKLAUNCHER_VERSION="1.2.0")
 
 if(WIN32)
     target_link_libraries(BlockLauncher PRIVATE dwmapi)

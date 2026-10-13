@@ -4,7 +4,7 @@
 ; (générées via windeployqt, voir installer\build_installer.ps1).
 
 #define MyAppName "Block Launcher"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.2.0"
 #define MyAppPublisher "Block Launcher"
 #define MyAppExeName "BlockLauncher.exe"
 #define DistDir "..\dist"
