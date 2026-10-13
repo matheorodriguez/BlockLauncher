@@ -1,0 +1,7 @@
+build/
+dist/
+installer/Output/
+client_id.txt
+*.user
+.vs/
+*.log
