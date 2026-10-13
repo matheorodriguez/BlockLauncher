@@ -3,6 +3,7 @@
 #include "Game.h"
 #include "Mods.h"
 #include "Skins.h"
+#include "Update.h"
 
 #include <QMainWindow>
 #include <functional>
@@ -44,7 +45,7 @@ private:
                          QLabel** descOut = nullptr);
 
     void goTo(int page);
-    void runTask(Job job, std::function<void()> onDone = {});
+    void runTask(Job job, std::function<void()> onDone = {}, bool silent = false);
     void setBusy(bool busy);
     void onProgress(const QString& status, qint64 done, qint64 total);
     void showInfo(const QString& msg, Sev sev);
@@ -82,6 +83,9 @@ private:
     void changeSkin(const QString& filePath, const QString& variant);
     void resetSkinAction();
     void activateCape(const QString& capeId);
+
+    void checkUpdates(bool silent);
+    void installUpdate();
 
     bool m_mica;
     bool m_busy = false;
@@ -130,6 +134,10 @@ private:
     QComboBox* m_skinVariantCombo = nullptr;
     QListWidget* m_capeList = nullptr;
     MinecraftProfile m_mcProfile;
+
+    QLabel* m_updateDesc = nullptr;
+    QPushButton* m_updateBtn = nullptr;
+    UpdateInfo m_latestUpdate;
 
     QLabel* m_accountDesc = nullptr;
     QPushButton* m_accountBtn = nullptr;

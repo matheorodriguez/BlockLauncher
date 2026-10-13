@@ -5,6 +5,7 @@
 #include "Net.h"
 #include "Skins.h"
 #include "Style.h"
+#include "Update.h"
 
 #include <QAbstractButton>
 #include <QApplication>
@@ -611,6 +612,7 @@ MainWindow::MainWindow(bool mica, QWidget* parent) : QMainWindow(parent), m_mica
     refreshTexProfiles();
     refreshInstances();
     refreshSkin();
+    checkUpdates(true);
 }
 
 // ---------------------------------------------------------------------------
@@ -1154,8 +1156,20 @@ QWidget* MainWindow::buildSettings()
                                 "Fond translucide de Windows 11 (22H2 ou plus récent). Nécessite un redémarrage.",
                                 m_micaToggle));
 
+    // --- Mises à jour
+    section("Mises à jour");
+    m_updateBtn = new QPushButton("Vérifier");
+    m_updateBtn->setMinimumWidth(130);
+    connect(m_updateBtn, &QPushButton::clicked, this, [this] {
+        if (!m_latestUpdate.version.isEmpty()) installUpdate();
+        else checkUpdates(false);
+    });
+    lay->addWidget(settingsCard(Glyph::Download, "Block Launcher",
+                                QString("Version actuelle : %1").arg(BLOCKLAUNCHER_VERSION), m_updateBtn,
+                                &m_updateDesc));
+
     lay->addSpacing(18);
-    auto* about = label("Block Launcher 1.0 · Projet non officiel, non affilié à Mojang Studios ni à Microsoft.",
+    auto* about = label("Block Launcher " BLOCKLAUNCHER_VERSION " · Projet non officiel, non affilié à Mojang Studios ni à Microsoft.",
                         "secondary");
     lay->addWidget(about);
     lay->addStretch();
@@ -1224,11 +1238,11 @@ void MainWindow::showInfo(const QString& msg, Sev sev)
 // ---------------------------------------------------------------------------
 //  Tâches en arrière-plan
 // ---------------------------------------------------------------------------
-void MainWindow::runTask(Job job, std::function<void()> onDone)
+void MainWindow::runTask(Job job, std::function<void()> onDone, bool silent)
 {
     if (m_busy) return;
     setBusy(true);
-    QThread* th = QThread::create([this, job, onDone] {
+    QThread* th = QThread::create([this, job, onDone, silent] {
         const Progress progress = [this](const QString& s, qint64 d, qint64 t) {
             QMetaObject::invokeMethod(this, [this, s, d, t] { onProgress(s, d, t); }, Qt::QueuedConnection);
         };
@@ -1240,9 +1254,9 @@ void MainWindow::runTask(Job job, std::function<void()> onDone)
         } catch (const std::exception& e) {
             err = QString::fromUtf8(e.what());
         }
-        QMetaObject::invokeMethod(this, [this, err, onDone] {
+        QMetaObject::invokeMethod(this, [this, err, onDone, silent] {
             setBusy(false);
-            if (!err.isEmpty()) showInfo(err, Sev::Error);
+            if (!err.isEmpty()) { if (!silent) showInfo(err, Sev::Error); }
             else if (onDone) onDone();
         }, Qt::QueuedConnection);
     });
@@ -2212,5 +2226,66 @@ void MainWindow::activateCape(const QString& capeId)
             saveAccount();
             showInfo(capeId.isEmpty() ? "Cape retirée." : "Cape équipée.", Sev::Success);
             refreshSkin();
+        });
+}
+
+// ---------------------------------------------------------------------------
+//  Mise à jour automatique
+// ---------------------------------------------------------------------------
+void MainWindow::checkUpdates(bool silent)
+{
+    if (m_busy) return; // vérification silencieuse au démarrage : ne gêne jamais une tâche en cours
+    if (m_updateDesc)
+        m_updateDesc->setText(QString("Version actuelle : %1 — vérification…").arg(BLOCKLAUNCHER_VERSION));
+    if (m_updateBtn) m_updateBtn->setEnabled(false);
+
+    auto info = std::make_shared<UpdateInfo>();
+    runTask(
+        [info](const Progress&) {
+            QNetworkAccessManager nam;
+            *info = Update::checkForUpdate(nam, BLOCKLAUNCHER_VERSION);
+        },
+        [this, info, silent] {
+            m_latestUpdate = *info;
+            if (m_updateBtn) m_updateBtn->setEnabled(true);
+            if (m_latestUpdate.version.isEmpty()) {
+                if (m_updateDesc)
+                    m_updateDesc->setText(QString("Version actuelle : %1 — à jour.").arg(BLOCKLAUNCHER_VERSION));
+                if (m_updateBtn) {
+                    m_updateBtn->setText("Vérifier");
+                    m_updateBtn->setObjectName("");
+                }
+            } else {
+                if (m_updateDesc)
+                    m_updateDesc->setText(QString("Version actuelle : %1 — nouvelle version %2 disponible !")
+                                              .arg(BLOCKLAUNCHER_VERSION, m_latestUpdate.version));
+                if (m_updateBtn) {
+                    m_updateBtn->setText("  Mettre à jour");
+                    m_updateBtn->setIcon(glyphIcon(Glyph::Download, Qt::black, 14));
+                    m_updateBtn->setObjectName("accent");
+                }
+                showInfo("Une nouvelle version (" + m_latestUpdate.version + ") de Block Launcher est disponible.",
+                         Sev::Info);
+            }
+            if (m_updateBtn) {
+                m_updateBtn->style()->unpolish(m_updateBtn);
+                m_updateBtn->style()->polish(m_updateBtn);
+            }
+        },
+        silent);
+}
+
+void MainWindow::installUpdate()
+{
+    if (m_latestUpdate.version.isEmpty()) return;
+    const UpdateInfo info = m_latestUpdate;
+    runTask(
+        [info](const Progress& p) {
+            QNetworkAccessManager nam;
+            Update::downloadAndLaunchInstaller(nam, info, p);
+        },
+        [this] {
+            showInfo("Mise à jour lancée : le launcher va se fermer pour l'installer.", Sev::Info);
+            QTimer::singleShot(1500, qApp, &QApplication::quit);
         });
 }

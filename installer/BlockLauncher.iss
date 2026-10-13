@@ -8,6 +8,9 @@
 #define MyAppPublisher "Block Launcher"
 #define MyAppExeName "BlockLauncher.exe"
 #define DistDir "..\dist"
+; ID client Azure préconfiguré (facultatif) : laisse "" pour que le champ reste vide à
+; l'installation. Modifie cette valeur avant de recompiler si tu changes d'application Azure.
+#define DefaultClientId "1e2c3b67-0d62-497f-b7e2-4d8630876a72"
 
 [Setup]
 AppId={{B9B9C8C0-6C2E-4C7E-9B7B-5B6C9B6E7A11}
@@ -25,6 +28,7 @@ WizardStyle=modern
 PrivilegesRequiredOverridesAllowed=dialog
 UninstallDisplayIcon={app}\{#MyAppExeName}
 ArchitecturesInstallIn64BitMode=x64compatible
+SetupIconFile=..\src\icon.ico
 
 [Languages]
 Name: "french"; MessagesFile: "compiler:Languages\French.isl"
@@ -70,6 +74,7 @@ begin
     'client ci-dessous. Tu peux laisser ce champ vide et le renseigner plus tard dans ' +
     'Paramètres.');
   ClientIdPage.Add('ID client (GUID) :', False);
+  ClientIdPage.Values[0] := '{#DefaultClientId}';
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
